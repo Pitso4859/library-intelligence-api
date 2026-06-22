@@ -89,7 +89,7 @@ The domain enforces these rules at the entity level, not just the controller:
 | Characters 1–9 | Numeric digits only |
 | Character 10 | Digit, `B`, or `b` |
 
-Valid: `032156840b` · `1198734561B` · `067001617B` · `1367823245`
+Valid: `032156840b` · `119873456B` · `067001617B` · `1367823245`
 
 ---
 
@@ -129,7 +129,7 @@ POST /api/v1/books
 {
   "title": "Refactoring",
   "author": "Martin Fowler",
-  "isbnNo": "1198734561B",
+  "isbnNo": "119873456B",
   "noOfPages": 448,
   "weightGrams": 680.5
 }

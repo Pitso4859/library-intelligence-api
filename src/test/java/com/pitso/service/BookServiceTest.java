@@ -42,7 +42,7 @@ class BookServiceTest {
         printBookRequest = new CreateBookRequest();
         printBookRequest.setTitle("Refactoring");
         printBookRequest.setAuthor("Martin Fowler");
-        printBookRequest.setIsbnNo("1198734561B");
+        printBookRequest.setIsbnNo("119873456B");
         printBookRequest.setNoOfPages(448);
         printBookRequest.setWeightGrams(680.5f);
     }
@@ -67,8 +67,8 @@ class BookServiceTest {
     @Test
     @DisplayName("createBook: PrintBook is created when ISBN starts with '1'")
     void createPrintBook_success() {
-        when(bookRepository.existsByIsbnNo("1198734561B")).thenReturn(false);
-        PrintBook saved = new PrintBook("Refactoring", "Martin Fowler", "1198734561B", 448, 680.5f);
+        when(bookRepository.existsByIsbnNo("119873456B")).thenReturn(false);
+        PrintBook saved = new PrintBook("Refactoring", "Martin Fowler", "119873456B", 448, 680.5f);
         when(bookRepository.save(any(PrintBook.class))).thenReturn(saved);
 
         BookResponse result = bookService.createBook(printBookRequest);
@@ -96,7 +96,7 @@ class BookServiceTest {
     @Test
     @DisplayName("createBook: PrintBook without noOfPages throws InvalidBookTypeException")
     void createPrintBook_missingPages() {
-        when(bookRepository.existsByIsbnNo("1198734561B")).thenReturn(false);
+        when(bookRepository.existsByIsbnNo("119873456B")).thenReturn(false);
         printBookRequest.setNoOfPages(null);
         assertThrows(InvalidBookTypeException.class, () -> bookService.createBook(printBookRequest));
     }

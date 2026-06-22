@@ -61,7 +61,7 @@ class BookControllerIntegrationTest {
         CreateBookRequest req = new CreateBookRequest();
         req.setTitle("Refactoring");
         req.setAuthor("Martin Fowler");
-        req.setIsbnNo("1198734561B");
+        req.setIsbnNo("119873456B");
         req.setNoOfPages(448);
         req.setWeightGrams(680.5f);
 

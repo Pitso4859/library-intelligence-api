@@ -31,7 +31,7 @@ public class DataSeeder {
             repo.save(new EBook("Design Patterns", "Gang of Four", "019873456B", 5120));
 
             repo.save(new PrintBook("The Mythical Man-Month", "Fred Brooks", "1367823245", 322, 420.0f));
-            repo.save(new PrintBook("Refactoring", "Martin Fowler", "1198734561B", 448, 680.5f));
+            repo.save(new PrintBook("Refactoring", "Martin Fowler", "119873456B", 448, 680.5f));
             repo.save(new PrintBook("Domain-Driven Design", "Eric Evans", "1032156845", 560, 850.0f));
 
             log.info("Seeded {} books.", repo.count());
