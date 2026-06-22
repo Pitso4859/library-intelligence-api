@@ -1,0 +1,144 @@
+package com.pitso.controller;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.pitso.model.BookDtos.CreateBookRequest;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.transaction.annotation.Transactional;
+
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+/**
+ * Integration tests — uses full Spring context + H2 in-memory DB.
+ * Each test runs in a transaction that's rolled back after the test.
+ */
+@SpringBootTest
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+@Transactional
+@DisplayName("Book API Integration Tests")
+class BookControllerIntegrationTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    private static final String BASE_URL = "/api/v1/books";
+
+    // ── POST /api/v1/books ───────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("POST /books: creates EBook successfully")
+    void createEBook_returns201() throws Exception {
+        CreateBookRequest req = new CreateBookRequest();
+        req.setTitle("Clean Code");
+        req.setAuthor("Robert C. Martin");
+        req.setIsbnNo("032156840b");
+        req.setFileSizeKb(3500);
+
+        mockMvc.perform(post(BASE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.bookType").value("EBOOK"))
+            .andExpect(jsonPath("$.title").value("Clean Code"))
+            .andExpect(jsonPath("$.fileSizeKb").value(3500))
+            .andExpect(jsonPath("$.id").isNumber());
+    }
+
+    @Test
+    @DisplayName("POST /books: creates PrintBook successfully")
+    void createPrintBook_returns201() throws Exception {
+        CreateBookRequest req = new CreateBookRequest();
+        req.setTitle("Refactoring");
+        req.setAuthor("Martin Fowler");
+        req.setIsbnNo("1198734561B");
+        req.setNoOfPages(448);
+        req.setWeightGrams(680.5f);
+
+        mockMvc.perform(post(BASE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.bookType").value("PRINTBOOK"))
+            .andExpect(jsonPath("$.noOfPages").value(448));
+    }
+
+    @Test
+    @DisplayName("POST /books: returns 400 for invalid ISBN (too short)")
+    void createBook_invalidIsbn_returns400() throws Exception {
+        CreateBookRequest req = new CreateBookRequest();
+        req.setTitle("Bad Book");
+        req.setAuthor("Bad Author");
+        req.setIsbnNo("192156844"); // 9 chars - invalid
+        req.setFileSizeKb(100);
+
+        mockMvc.perform(post(BASE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("POST /books: returns 400 for missing required fields")
+    void createBook_missingTitle_returns400() throws Exception {
+        CreateBookRequest req = new CreateBookRequest();
+        req.setAuthor("Someone");
+        req.setIsbnNo("032156840b");
+
+        mockMvc.perform(post(BASE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.fieldErrors.title").exists());
+    }
+
+    // ── GET /api/v1/books ────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("GET /books: returns paginated list")
+    void getAllBooks_returnsPaginatedList() throws Exception {
+        mockMvc.perform(get(BASE_URL).param("page", "0").param("size", "10"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.content").isArray())
+            .andExpect(jsonPath("$.totalElements").isNumber());
+    }
+
+    @Test
+    @DisplayName("GET /books/{id}: returns 404 for unknown id")
+    void getBookById_notFound() throws Exception {
+        mockMvc.perform(get(BASE_URL + "/999999"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.message").value("Book not found with id: 999999"));
+    }
+
+    // ── GET /stats ────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("GET /books/stats: returns inventory stats")
+    void getStats_returnsStats() throws Exception {
+        mockMvc.perform(get(BASE_URL + "/stats"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.totalBooks").isNumber())
+            .andExpect(jsonPath("$.totalEBooks").isNumber())
+            .andExpect(jsonPath("$.totalPrintBooks").isNumber());
+    }
+
+    // ── DELETE ────────────────────────────────────────────────────────────────
+
+    @Test
+    @DisplayName("DELETE /books/{id}: returns 404 when book does not exist")
+    void deleteBook_notFound_returns404() throws Exception {
+        mockMvc.perform(delete(BASE_URL + "/999999"))
+            .andExpect(status().isNotFound());
+    }
+}

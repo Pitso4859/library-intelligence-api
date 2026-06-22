@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # ── PostgreSQL ──────────────────────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: pitso-db
+    environment:
+      POSTGRES_DB: pitsodb
+      POSTGRES_USER: pitso
+      POSTGRES_PASSWORD: changeme
+    ports:
+      - "5432:5432"
+    volumes:
+      - pitso-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pitso -d pitsodb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Application ─────────────────────────────────────────────────────────────
+  app:
+    build: .
+    container_name: pitso-app
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://db:5432/pitsodb
+      DB_USERNAME: pitso
+      DB_PASSWORD: changeme
+    ports:
+      - "8080:8080"
+    restart: unless-stopped
+
+volumes:
+  pitso-db-data:
