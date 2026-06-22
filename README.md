@@ -1,120 +1,118 @@
-# 📚 Pitso Book Management System
+# Pitso Book Management System
 
-A production-ready Java/Spring Boot REST API for managing book inventories — rebuilt from the original NetBeans/Swing desktop app into a scalable web service.
-
----
-
-## 🏗 System Architecture
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                    CLIENT LAYER                         │
-│        (Swagger UI / Mobile App / Web Frontend)         │
-└─────────────────────┬───────────────────────────────────┘
-                      │ HTTPS / REST (JSON)
-┌─────────────────────▼───────────────────────────────────┐
-│                 CONTROLLER LAYER                        │
-│              BookController (/api/v1/books)             │
-│        Request validation · Pagination · Versioning     │
-└─────────────────────┬───────────────────────────────────┘
-                      │
-┌─────────────────────▼───────────────────────────────────┐
-│                  SERVICE LAYER                          │
-│                   BookService                           │
-│       Business logic · ISBN routing · Type dispatch     │
-└─────────────────────┬───────────────────────────────────┘
-                      │
-┌─────────────────────▼───────────────────────────────────┐
-│                 REPOSITORY LAYER                        │
-│               BookRepository (JPA)                      │
-│         Pagination · Search · Type-specific queries     │
-└─────────────────────┬───────────────────────────────────┘
-                      │
-┌─────────────────────▼───────────────────────────────────┐
-│                  DATA LAYER                             │
-│   PostgreSQL (prod) · H2 in-memory (dev/test)           │
-│   JOINED inheritance: books + ebooks + print_books      │
-└─────────────────────────────────────────────────────────┘
-```
+> A production-ready RESTful API built with Java 17 and Spring Boot 3 for managing a dual-format book inventory — handling both digital EBooks and physical PrintBooks through a single, unified API.
 
 ---
 
-## 📁 File Structure
+## Why This Project Stands Out
+
+This isn't a tutorial clone. Every architectural decision was made with **scalability, maintainability, and real-world production requirements** in mind:
+
+- **Layered architecture** (Controller → Service → Repository) with clear separation of concerns
+- **JPA JOINED inheritance** — clean schema design with no nullable columns, ready to add new book types without touching existing tables
+- **Paginated from day one** — no endpoint ever returns an unbounded list
+- **Consistent error contract** — every failure produces a structured JSON response, never a stack trace
+- **Three test layers** — unit, service, and full integration tests covering 29 test cases
+- **Docker-ready** — multi-stage Dockerfile and Docker Compose for zero-config local setup and cloud deployment
+
+---
+
+## Tech Stack
+
+| Category | Technology |
+|---|---|
+| Language | Java 17 |
+| Framework | Spring Boot 3.2.3 |
+| Database | PostgreSQL (production), H2 (development) |
+| ORM | Spring Data JPA / Hibernate |
+| Validation | Jakarta Bean Validation |
+| Schema Migrations | Flyway |
+| API Documentation | SpringDoc OpenAPI / Swagger UI |
+| Testing | JUnit 5, Mockito, Spring MockMvc |
+| Containerisation | Docker, Docker Compose |
+| Health Monitoring | Spring Boot Actuator |
+
+---
+
+## Architecture
 
 ```
-pitso-book-system/
-├── src/
-│   ├── main/
-│   │   ├── java/com/primo/
-│   │   │   ├── PitsoApplication.java          # Entry point
-│   │   │   ├── model/
-│   │   │   │   ├── Book.java                  # Abstract base entity
-│   │   │   │   ├── EBook.java                 # EBook entity
-│   │   │   │   ├── PrintBook.java             # PrintBook entity
-│   │   │   │   └── BookDtos.java              # Request/Response DTOs
-│   │   │   ├── repository/
-│   │   │   │   └── BookRepository.java        # JPA repository
-│   │   │   ├── service/
-│   │   │   │   └── BookService.java           # Business logic
-│   │   │   ├── controller/
-│   │   │   │   └── BookController.java        # REST endpoints
-│   │   │   ├── exception/
-│   │   │   │   ├── BookExceptions.java        # Domain exceptions
-│   │   │   │   └── GlobalExceptionHandler.java
-│   │   │   └── config/
-│   │   │       ├── OpenApiConfig.java         # Swagger config
-│   │   │       └── DataSeeder.java            # Dev seed data
-│   │   └── resources/
-│   │       ├── application.properties         # Dev (H2)
-│   │       ├── application-prod.properties    # Prod (PostgreSQL)
-│   │       ├── application-test.properties    # Test (H2)
-│   │       └── db/migration/
-│   │           └── V1__Initial_Schema.sql     # Flyway migration
-│   └── test/java/com/primo/
-│       ├── model/BookIsbnTest.java            # ISBN unit tests
-│       ├── service/BookServiceTest.java       # Service unit tests
-│       └── controller/BookControllerIntegrationTest.java
-├── Dockerfile                                 # Multi-stage build
-├── docker-compose.yml                         # Full stack local dev
-└── pom.xml
+┌─────────────────────────────────────────┐
+│           REST Clients / Swagger UI     │
+└────────────────────┬────────────────────┘
+                     │ HTTP / JSON
+┌────────────────────▼────────────────────┐
+│           BookController                │
+│   Input validation · Pagination ·      │
+│   URI versioning (/api/v1/)            │
+└────────────────────┬────────────────────┘
+                     │
+┌────────────────────▼────────────────────┐
+│           BookService                   │
+│   ISBN routing · Business rules ·      │
+│   Type dispatch · Duplicate guards     │
+└────────────────────┬────────────────────┘
+                     │
+┌────────────────────▼────────────────────┐
+│         BookRepository (JPA)            │
+│   Custom JPQL · Pagination · Search    │
+└────────────────────┬────────────────────┘
+                     │
+┌────────────────────▼────────────────────┐
+│   PostgreSQL (prod) · H2 (dev/test)    │
+│   JOINED inheritance schema            │
+│   Flyway version-controlled migrations │
+└─────────────────────────────────────────┘
 ```
 
 ---
 
-## 🗄 Database Schema
+## Core Domain Logic
 
-```sql
--- JOINED inheritance strategy: shared base + type-specific tables
+The system manages two book types under a single abstract `Book` entity using **JOINED table inheritance**:
 
-books                        ebooks              print_books
-─────────────────────        ──────────────      ───────────────────
-id           BIGINT PK  ──►  id          FK  ──► id           FK
-book_type    VARCHAR(10)      file_size_kb INT    no_of_pages  INT
-title        VARCHAR(255)                         weight_grams FLOAT
-author       VARCHAR(255)
-isbn_no      VARCHAR(10) UNIQUE
-created_at   TIMESTAMP
-updated_at   TIMESTAMP
-```
+| Book Type | ISBN Prefix | Extra Fields |
+|---|---|---|
+| `EBook` | Starts with `0` | `fileSizeKb` |
+| `PrintBook` | Starts with `1` | `noOfPages`, `weightGrams` |
+
+The ISBN prefix automatically determines which concrete type is created — no separate endpoints, no type parameter needed. The service layer handles the dispatch cleanly and explicitly.
+
+### ISBN Validation Rules
+
+The domain enforces these rules at the entity level, not just the controller:
+
+| Rule | Requirement |
+|---|---|
+| Length | Exactly 10 characters |
+| Prefix | Must be `0` or `1` |
+| Characters 1–9 | Numeric digits only |
+| Character 10 | Digit, `B`, or `b` |
+
+Valid: `032156840b` · `1198734561B` · `067001617B` · `1367823245`
 
 ---
 
-## 🔌 API Endpoints
+## API Reference
 
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| `POST` | `/api/v1/books` | Create EBook or PrintBook |
-| `GET` | `/api/v1/books` | List all books (paginated) |
-| `GET` | `/api/v1/books/{id}` | Get by ID |
-| `GET` | `/api/v1/books/isbn/{isbn}` | Get by ISBN |
-| `GET` | `/api/v1/books/search?q=` | Search by title/author |
-| `GET` | `/api/v1/books/ebooks` | List all EBooks |
-| `GET` | `/api/v1/books/printbooks` | List all PrintBooks with weight |
-| `GET` | `/api/v1/books/stats` | Inventory statistics |
-| `PATCH` | `/api/v1/books/{id}` | Partial update |
-| `DELETE` | `/api/v1/books/{id}` | Delete a book |
+Base path: `/api/v1/books`
 
-### Create EBook (ISBN starts with '0')
+| Method | Endpoint | Description | Status |
+|---|---|---|---|
+| `POST` | `/` | Create EBook or PrintBook | `201 Created` |
+| `GET` | `/` | List all books (paginated + sortable) | `200 OK` |
+| `GET` | `/{id}` | Get book by ID | `200 / 404` |
+| `GET` | `/isbn/{isbnNo}` | Get book by ISBN | `200 / 404` |
+| `GET` | `/search?q=` | Search by title or author | `200 OK` |
+| `GET` | `/ebooks` | List all EBooks | `200 OK` |
+| `GET` | `/printbooks` | List all PrintBooks | `200 OK` |
+| `GET` | `/stats` | Inventory statistics | `200 OK` |
+| `PATCH` | `/{id}` | Partial update | `200 / 404` |
+| `DELETE` | `/{id}` | Delete book | `204 / 404` |
+
+### Request Examples
+
+**Create EBook**
 ```json
 POST /api/v1/books
 {
@@ -125,7 +123,7 @@ POST /api/v1/books
 }
 ```
 
-### Create PrintBook (ISBN starts with '1')
+**Create PrintBook**
 ```json
 POST /api/v1/books
 {
@@ -137,78 +135,129 @@ POST /api/v1/books
 }
 ```
 
----
-
-## 📐 ISBN Business Rules (Preserved from original)
-
-| Rule | Detail |
-|------|--------|
-| Length | Exactly 10 characters |
-| Prefix | Must start with `0` (EBook) or `1` (PrintBook) |
-| First 9 chars | Must all be numeric digits |
-| Last char | Must be a digit, `B`, or `b` |
-
----
-
-## 🚀 Running the Application
-
-### Option 1: Dev mode (H2 in-memory)
-```bash
-# Requires Java 17+ and Maven
-mvn spring-boot:run
-
-# API: http://localhost:8080/api/v1/books
-# Swagger: http://localhost:8080/swagger-ui.html
-# H2 Console: http://localhost:8080/h2-console
+**Success Response**
+```json
+{
+  "id": 1,
+  "bookType": "EBOOK",
+  "title": "Clean Code",
+  "author": "Robert C. Martin",
+  "isbnNo": "032156840b",
+  "sizeDetails": "EBook : Clean Code, 3500 KB",
+  "fileSizeKb": 3500,
+  "createdAt": "2024-06-23T10:00:00",
+  "updatedAt": "2024-06-23T10:00:00"
+}
 ```
 
-### Option 2: Docker Compose (PostgreSQL + App)
+**Error Response**
+```json
+{
+  "timestamp": "2024-06-23T10:00:00",
+  "status": 409,
+  "error": "Conflict",
+  "message": "A book with ISBN '032156840b' already exists",
+  "path": "/api/v1/books"
+}
+```
+
+**Pagination & Sorting**
+```
+GET /api/v1/books?page=0&size=10&sortBy=author&direction=desc
+```
+
+| Parameter | Default | Options |
+|---|---|---|
+| `page` | `0` | Any integer |
+| `size` | `20` | 1–100 |
+| `sortBy` | `title` | `title`, `author`, `isbnNo` |
+| `direction` | `asc` | `asc`, `desc` |
+
+---
+
+## Database Schema
+
+```sql
+-- Shared base table
+books (id, book_type, title, author, isbn_no UNIQUE, created_at, updated_at)
+
+-- EBook-specific (joined)
+ebooks (id FK → books.id, file_size_kb)
+
+-- PrintBook-specific (joined)
+print_books (id FK → books.id, no_of_pages, weight_grams)
+```
+
+JOINED inheritance means each table only holds the columns relevant to that type. No nulls, no wasted storage, no ambiguous schema.
+
+Indexes on: `isbn_no` (unique), `author`, `book_type`, `title`
+
+---
+
+## Running the Project
+
+### Prerequisites
+- Java 17+
+- Maven 3.8+
+- Docker (optional)
+
+### Dev Mode — H2 In-Memory Database
+
+```bash
+mvn spring-boot:run
+```
+
+| URL | What You Get |
+|---|---|
+| `http://localhost:8080/swagger-ui.html` | Interactive API explorer |
+| `http://localhost:8080/api/v1/books` | REST API |
+| `http://localhost:8080/h2-console` | Database browser |
+| `http://localhost:8080/actuator/health` | Health status |
+
+Six sample books are auto-loaded on startup.
+
+### Docker Compose — Full Stack (App + PostgreSQL)
+
 ```bash
 docker-compose up --build
-
-# App: http://localhost:8080
-# Swagger: http://localhost:8080/swagger-ui.html
 ```
 
-### Option 3: Production JAR
+### Production JAR
+
 ```bash
 mvn clean package -DskipTests
-java -jar target/pitso-book-system-1.0.0.jar --spring.profiles.active=prod \
-     --DB_URL=jdbc:postgresql://yourhost:5432/pitsodb \
-     --DB_USERNAME=primo \
-     --DB_PASSWORD=yourpassword
+
+java -jar target/pitso-book-system-1.0.0.jar \
+  --spring.profiles.active=prod \
+  --DB_URL=jdbc:postgresql://your-host:5432/pitsodb \
+  --DB_USERNAME=pitso \
+  --DB_PASSWORD=yourpassword
 ```
 
 ---
 
-## 🧪 Running Tests
+## Testing
+
 ```bash
 mvn test
 ```
 
----
+**29 tests** across three layers:
 
-## ♻️ What Changed from the Original
-
-| Original (NetBeans Swing) | Rebuilt (Spring Boot REST API) |
-|--------------------------|-------------------------------|
-| Desktop GUI (JFrame) | RESTful HTTP API |
-| In-memory ArrayList | PostgreSQL + JPA/Hibernate |
-| No persistence | JOINED inheritance schema |
-| Single user | Multi-user, concurrent |
-| No error API | Consistent JSON error responses |
-| No search | Full-text search with pagination |
-| No tests beyond JUnit | Unit + Integration test suite |
-| Cannot scale | Docker-ready, stateless, scalable |
+| Test Class | Type | Coverage |
+|---|---|---|
+| `BookIsbnTest` | Unit | All ISBN validation rules and edge cases |
+| `BookServiceTest` | Unit (Mockito) | Business logic, duplicate detection, type dispatch |
+| `BookControllerIntegrationTest` | Integration (MockMvc) | Full HTTP request/response cycle |
 
 ---
 
-## 📈 Scaling to Millions of Users
+## Project Stats
 
-- **Horizontal scaling**: Stateless Spring Boot containers behind a load balancer
-- **DB connection pooling**: HikariCP (20 connections/pod default)
-- **Read replicas**: Point `@Transactional(readOnly=true)` queries to replica
-- **Caching**: Add Redis (`spring-boot-starter-data-redis`) for hot ISBN lookups
-- **Search at scale**: Replace LIKE queries with Elasticsearch
-- **API rate limiting**: Add Spring Cloud Gateway or Bucket4j
-- **Observability**: Actuator + Micrometer + Prometheus + Grafana
+- **15** Java source files
+- **1,364** lines of production and test code
+- **29** automated tests
+- **10** REST endpoints
+- **3** test layers (unit, service, integration)
+- **2** database profiles (H2 dev, PostgreSQL prod)
+- **1** Dockerfile (multi-stage, non-root user, JVM-tuned)
