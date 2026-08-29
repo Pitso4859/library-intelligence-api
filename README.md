@@ -4,7 +4,7 @@ A production-style **Java 17 + Spring Boot 3** backend that manages EBooks and P
 
 The application logic is Java. There is no JavaScript frontend: the project focuses on REST design, OOP, JPA/Hibernate, transactions, validation, testing, observability and PostgreSQL-ready persistence.
 
-## Why this project is recruiter-ready
+## Why I choose to build this project
 
 This repository goes beyond basic CRUD. It demonstrates:
 
