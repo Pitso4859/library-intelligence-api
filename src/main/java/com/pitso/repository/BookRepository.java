@@ -21,9 +21,9 @@ import java.util.Optional;
 @Repository
 public interface BookRepository extends JpaRepository<Book, Long> {
 
-    Optional<Book> findByIsbnNo(String isbnNo);
+    Optional<Book> findByIsbnNoIgnoreCase(String isbnNo);
 
-    boolean existsByIsbnNo(String isbnNo);
+    boolean existsByIsbnNoIgnoreCase(String isbnNo);
 
     // Search by title or author (case-insensitive)
     @Query("SELECT b FROM Book b WHERE " +
@@ -33,11 +33,11 @@ public interface BookRepository extends JpaRepository<Book, Long> {
 
     // Fetch only EBooks
     @Query("SELECT e FROM EBook e")
-    List<EBook> findAllEBooks();
+    Page<EBook> findAllEBooks(Pageable pageable);
 
     // Fetch only PrintBooks
     @Query("SELECT p FROM PrintBook p")
-    List<PrintBook> findAllPrintBooks();
+    Page<PrintBook> findAllPrintBooks(Pageable pageable);
 
     // Count by type
     @Query("SELECT COUNT(e) FROM EBook e")
@@ -45,6 +45,24 @@ public interface BookRepository extends JpaRepository<Book, Long> {
 
     @Query("SELECT COUNT(p) FROM PrintBook p")
     long countPrintBooks();
+
+
+    // Catalog intelligence queries
+    @Query("SELECT COUNT(DISTINCT LOWER(b.author)) FROM Book b")
+    long countDistinctAuthors();
+
+    @Query("SELECT COALESCE(AVG(e.fileSizeKb), 0.0) FROM EBook e")
+    double averageEBookSizeKb();
+
+    @Query("SELECT COALESCE(AVG(p.noOfPages), 0.0) FROM PrintBook p")
+    double averagePrintPages();
+
+    @Query("SELECT COALESCE(AVG(p.weightGrams), 0.0) FROM PrintBook p")
+    double averagePrintWeightGrams();
+
+    @Query("SELECT b.author AS author, COUNT(b) AS bookCount " +
+           "FROM Book b GROUP BY b.author ORDER BY COUNT(b) DESC, b.author ASC")
+    List<AuthorCountProjection> findTopAuthors(Pageable pageable);
 
     // Search within a specific book type
     @Query("SELECT e FROM EBook e WHERE " +

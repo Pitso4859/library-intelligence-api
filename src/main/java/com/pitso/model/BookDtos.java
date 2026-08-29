@@ -1,6 +1,7 @@
 package com.pitso.model;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 
 /**
@@ -57,6 +58,22 @@ public final class BookDtos {
 
         public Float getWeightGrams() { return weightGrams; }
         public void setWeightGrams(Float weightGrams) { this.weightGrams = weightGrams; }
+    }
+
+
+    /**
+     * Bulk create request. The entire operation is transactional: either all
+     * books are created or none are persisted. A maximum of 100 items keeps
+     * API payloads bounded and predictable.
+     */
+    public static class BulkCreateBookRequest {
+        @NotEmpty(message = "At least one book is required")
+        @Size(max = 100, message = "A maximum of 100 books can be created per request")
+        @Valid
+        private java.util.List<CreateBookRequest> books;
+
+        public java.util.List<CreateBookRequest> getBooks() { return books; }
+        public void setBooks(java.util.List<CreateBookRequest> books) { this.books = books; }
     }
 
     public static class UpdateBookRequest {
@@ -139,6 +156,24 @@ public final class BookDtos {
         public Integer getFileSizeKb() { return fileSizeKb; }
         public Integer getNoOfPages() { return noOfPages; }
         public Float getWeightGrams() { return weightGrams; }
+    }
+
+
+    /** Summary returned by the transactional bulk-create endpoint. */
+    public static class BulkCreateBookResponse {
+        private final int requested;
+        private final int created;
+        private final java.util.List<BookResponse> books;
+
+        public BulkCreateBookResponse(int requested, java.util.List<BookResponse> books) {
+            this.requested = requested;
+            this.created = books.size();
+            this.books = java.util.List.copyOf(books);
+        }
+
+        public int getRequested() { return requested; }
+        public int getCreated() { return created; }
+        public java.util.List<BookResponse> getBooks() { return books; }
     }
 
     /** Inventory statistics response */

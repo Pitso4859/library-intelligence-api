@@ -14,7 +14,7 @@ import org.springframework.context.annotation.Profile;
  * In production, data comes from Flyway migrations or the API.
  */
 @Configuration
-@Profile("!prod")
+@Profile("!test & !prod")
 public class DataSeeder {
 
     private static final Logger log = LoggerFactory.getLogger(DataSeeder.class);

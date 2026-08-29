@@ -133,6 +133,80 @@ class BookControllerIntegrationTest {
             .andExpect(jsonPath("$.totalPrintBooks").isNumber());
     }
 
+
+    @Test
+    @DisplayName("POST /books/bulk: creates multiple books atomically")
+    void createBooksBulk_returns201() throws Exception {
+        String payload = """
+            {
+              \"books\": [
+                {
+                  \"title\": \"Effective Java\",
+                  \"author\": \"Joshua Bloch\",
+                  \"isbnNo\": \"012345670B\",
+                  \"fileSizeKb\": 2400
+                },
+                {
+                  \"title\": \"Java Concurrency in Practice\",
+                  \"author\": \"Brian Goetz\",
+                  \"isbnNo\": \"112345670B\",
+                  \"noOfPages\": 424,
+                  \"weightGrams\": 620.0
+                }
+              ]
+            }
+            """;
+
+        mockMvc.perform(post(BASE_URL + "/bulk")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(payload))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.requested").value(2))
+            .andExpect(jsonPath("$.created").value(2))
+            .andExpect(jsonPath("$.books[0].bookType").value("EBOOK"))
+            .andExpect(jsonPath("$.books[1].bookType").value("PRINTBOOK"));
+    }
+
+    @Test
+    @DisplayName("GET /catalog/recommendations: returns explainable Java recommendations")
+    void recommendations_returnsExplainableRanking() throws Exception {
+        CreateBookRequest req = new CreateBookRequest();
+        req.setTitle("Effective Java");
+        req.setAuthor("Joshua Bloch");
+        req.setIsbnNo("012345671B");
+        req.setFileSizeKb(2200);
+
+        mockMvc.perform(post(BASE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(req)))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(get("/api/v1/catalog/recommendations")
+                .param("q", "java")
+                .param("preferredType", "EBOOK")
+                .param("limit", "5"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$[0].title").value("Effective Java"))
+            .andExpect(jsonPath("$[0].score").isNumber())
+            .andExpect(jsonPath("$[0].reasons").isArray());
+    }
+
+    @Test
+    @DisplayName("Every response includes X-Request-ID for traceability")
+    void requestIdHeader_isReturned() throws Exception {
+        mockMvc.perform(get(BASE_URL))
+            .andExpect(status().isOk())
+            .andExpect(header().exists("X-Request-ID"));
+    }
+
+    @Test
+    @DisplayName("GET /books: rejects unsafe sort fields")
+    void getAllBooks_invalidSort_returns400() throws Exception {
+        mockMvc.perform(get(BASE_URL).param("sortBy", "doesNotExist"))
+            .andExpect(status().isBadRequest())
+            .andExpect(jsonPath("$.requestId").exists());
+    }
+
     // ── DELETE ────────────────────────────────────────────────────────────────
 
     @Test

@@ -17,24 +17,28 @@ public class OpenApiConfig {
     public OpenAPI pitsoOpenAPI() {
         return new OpenAPI()
             .info(new Info()
-                .title("Pitso Book Management System API")
+                .title("Pitso Library Intelligence API")
                 .description("""
-                    RESTful API for managing a book inventory containing EBooks and PrintBooks.
-                    
-                    **ISBN Rules:**
-                    - Must be exactly 10 characters
-                    - Must start with `0` (EBook) or `1` (PrintBook)
-                    - First 9 characters must be numeric digits
-                    - Last character must be a digit, `B`, or `b`
+                    Production-style Java REST API for a polymorphic book catalog.
+
+                    Engineering features include transactional bulk writes, explainable
+                    recommendations, catalog analytics, request correlation IDs,
+                    pagination, validation, central error handling and PostgreSQL
+                    migrations.
+
+                    ISBN rules:
+                    - exactly 10 characters
+                    - starts with 0 for EBook or 1 for PrintBook
+                    - first 9 characters are numeric
+                    - last character is a digit, B or b
                     """)
-                .version("v1.0.0")
+                .version("v1.1.0")
                 .contact(new Contact()
-                    .name("Pitso Team")
-                    .email("api@pitso.com"))
+                    .name("Pitso Nkotolane")
+                    .url("https://github.com/Pitso4859"))
                 .license(new License().name("MIT")))
             .servers(List.of(
-                new Server().url("http://localhost:8080").description("Development"),
-                new Server().url("https://api.pitso.com").description("Production")
+                new Server().url("http://localhost:8080").description("Development")
             ));
     }
 }

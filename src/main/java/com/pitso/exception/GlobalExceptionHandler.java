@@ -1,106 +1,111 @@
 package com.pitso.exception;
 
+import com.pitso.config.RequestIdFilter;
 import com.pitso.exception.BookExceptions.*;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.context.request.WebRequest;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
-/**
- * Centralized error handling — all exceptions produce consistent JSON responses.
- *
- * Response shape:
- * {
- *   "timestamp": "...",
- *   "status": 404,
- *   "error": "Not Found",
- *   "message": "Book not found with id: 5",
- *   "path": "/api/v1/books/5"
- * }
- */
+/** Centralized error handling with traceable, stable JSON contracts. */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // ── Domain Exceptions ────────────────────────────────────────────────────
-
     @ExceptionHandler(BookNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleNotFound(BookNotFoundException ex, WebRequest req) {
+    public ResponseEntity<ErrorResponse> handleNotFound(BookNotFoundException ex, HttpServletRequest req) {
         return buildError(HttpStatus.NOT_FOUND, ex.getMessage(), req);
     }
 
     @ExceptionHandler(DuplicateIsbnException.class)
-    public ResponseEntity<ErrorResponse> handleDuplicate(DuplicateIsbnException ex, WebRequest req) {
+    public ResponseEntity<ErrorResponse> handleDuplicate(DuplicateIsbnException ex, HttpServletRequest req) {
         return buildError(HttpStatus.CONFLICT, ex.getMessage(), req);
     }
 
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrity(
+            DataIntegrityViolationException ex, HttpServletRequest req) {
+        return buildError(
+            HttpStatus.CONFLICT,
+            "The request conflicts with an existing database record",
+            req
+        );
+    }
+
     @ExceptionHandler({InvalidBookTypeException.class, InvalidIsbnException.class})
-    public ResponseEntity<ErrorResponse> handleBadRequest(RuntimeException ex, WebRequest req) {
+    public ResponseEntity<ErrorResponse> handleBadRequest(RuntimeException ex, HttpServletRequest req) {
         return buildError(HttpStatus.BAD_REQUEST, ex.getMessage(), req);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex, WebRequest req) {
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest req) {
         return buildError(HttpStatus.BAD_REQUEST, ex.getMessage(), req);
     }
 
-    // ── Bean Validation Errors ───────────────────────────────────────────────
-
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ValidationErrorResponse> handleValidation(MethodArgumentNotValidException ex, WebRequest req) {
-        Map<String, String> fieldErrors = new HashMap<>();
-        for (FieldError fe : ex.getBindingResult().getFieldErrors()) {
-            fieldErrors.put(fe.getField(), fe.getDefaultMessage());
+    public ResponseEntity<ValidationErrorResponse> handleValidation(
+            MethodArgumentNotValidException ex, HttpServletRequest req) {
+
+        Map<String, String> fieldErrors = new LinkedHashMap<>();
+        for (FieldError fieldError : ex.getBindingResult().getFieldErrors()) {
+            fieldErrors.putIfAbsent(fieldError.getField(), fieldError.getDefaultMessage());
         }
+
         ValidationErrorResponse body = new ValidationErrorResponse(
             LocalDateTime.now(),
             HttpStatus.BAD_REQUEST.value(),
             "Validation Failed",
             fieldErrors,
-            extractPath(req)
+            req.getRequestURI(),
+            requestId(req)
         );
         return ResponseEntity.badRequest().body(body);
     }
 
-    // ── Catch-all ────────────────────────────────────────────────────────────
-
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleAll(Exception ex, WebRequest req) {
-        return buildError(HttpStatus.INTERNAL_SERVER_ERROR,
-            "An unexpected error occurred. Please try again later.", req);
+    public ResponseEntity<ErrorResponse> handleAll(Exception ex, HttpServletRequest req) {
+        return buildError(
+            HttpStatus.INTERNAL_SERVER_ERROR,
+            "An unexpected error occurred. Please try again later.",
+            req
+        );
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    private ResponseEntity<ErrorResponse> buildError(
+            HttpStatus status,
+            String message,
+            HttpServletRequest req) {
 
-    private ResponseEntity<ErrorResponse> buildError(HttpStatus status, String message, WebRequest req) {
         ErrorResponse body = new ErrorResponse(
             LocalDateTime.now(),
             status.value(),
             status.getReasonPhrase(),
             message,
-            extractPath(req)
+            req.getRequestURI(),
+            requestId(req)
         );
         return ResponseEntity.status(status).body(body);
     }
 
-    private String extractPath(WebRequest req) {
-        return req.getDescription(false).replace("uri=", "");
+    private String requestId(HttpServletRequest request) {
+        Object value = request.getAttribute(RequestIdFilter.ATTRIBUTE);
+        return value == null ? null : value.toString();
     }
-
-    // ── Response Records ─────────────────────────────────────────────────────
 
     public record ErrorResponse(
         LocalDateTime timestamp,
         int status,
         String error,
         String message,
-        String path
+        String path,
+        String requestId
     ) {}
 
     public record ValidationErrorResponse(
@@ -108,6 +113,7 @@ public class GlobalExceptionHandler {
         int status,
         String error,
         Map<String, String> fieldErrors,
-        String path
+        String path,
+        String requestId
     ) {}
 }

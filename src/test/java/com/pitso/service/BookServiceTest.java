@@ -12,10 +12,13 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -52,7 +55,7 @@ class BookServiceTest {
     @Test
     @DisplayName("createBook: EBook is created when ISBN starts with '0'")
     void createEBook_success() {
-        when(bookRepository.existsByIsbnNo("032156840b")).thenReturn(false);
+        when(bookRepository.existsByIsbnNoIgnoreCase("032156840b")).thenReturn(false);
         EBook saved = new EBook("Clean Code", "Robert C. Martin", "032156840b", 3500);
         when(bookRepository.save(any(EBook.class))).thenReturn(saved);
 
@@ -67,7 +70,7 @@ class BookServiceTest {
     @Test
     @DisplayName("createBook: PrintBook is created when ISBN starts with '1'")
     void createPrintBook_success() {
-        when(bookRepository.existsByIsbnNo("119873456B")).thenReturn(false);
+        when(bookRepository.existsByIsbnNoIgnoreCase("119873456B")).thenReturn(false);
         PrintBook saved = new PrintBook("Refactoring", "Martin Fowler", "119873456B", 448, 680.5f);
         when(bookRepository.save(any(PrintBook.class))).thenReturn(saved);
 
@@ -80,7 +83,7 @@ class BookServiceTest {
     @Test
     @DisplayName("createBook: throws DuplicateIsbnException for existing ISBN")
     void createBook_duplicateIsbn() {
-        when(bookRepository.existsByIsbnNo("032156840b")).thenReturn(true);
+        when(bookRepository.existsByIsbnNoIgnoreCase("032156840b")).thenReturn(true);
         assertThrows(DuplicateIsbnException.class, () -> bookService.createBook(ebookRequest));
         verify(bookRepository, never()).save(any());
     }
@@ -88,7 +91,7 @@ class BookServiceTest {
     @Test
     @DisplayName("createBook: EBook without fileSizeKb throws InvalidBookTypeException")
     void createEBook_missingFileSize() {
-        when(bookRepository.existsByIsbnNo("032156840b")).thenReturn(false);
+        when(bookRepository.existsByIsbnNoIgnoreCase("032156840b")).thenReturn(false);
         ebookRequest.setFileSizeKb(null);
         assertThrows(InvalidBookTypeException.class, () -> bookService.createBook(ebookRequest));
     }
@@ -96,9 +99,44 @@ class BookServiceTest {
     @Test
     @DisplayName("createBook: PrintBook without noOfPages throws InvalidBookTypeException")
     void createPrintBook_missingPages() {
-        when(bookRepository.existsByIsbnNo("119873456B")).thenReturn(false);
+        when(bookRepository.existsByIsbnNoIgnoreCase("119873456B")).thenReturn(false);
         printBookRequest.setNoOfPages(null);
         assertThrows(InvalidBookTypeException.class, () -> bookService.createBook(printBookRequest));
+    }
+
+
+    @Test
+    @DisplayName("createBooksBulk: creates mixed book types in one transaction")
+    void createBooksBulk_success() {
+        when(bookRepository.existsByIsbnNoIgnoreCase(anyString())).thenReturn(false);
+        when(bookRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        BulkCreateBookRequest bulk = new BulkCreateBookRequest();
+        bulk.setBooks(List.of(ebookRequest, printBookRequest));
+
+        BulkCreateBookResponse result = bookService.createBooksBulk(bulk);
+
+        assertEquals(2, result.getRequested());
+        assertEquals(2, result.getCreated());
+        assertEquals("EBOOK", result.getBooks().get(0).getBookType());
+        assertEquals("PRINTBOOK", result.getBooks().get(1).getBookType());
+        verify(bookRepository).saveAll(anyList());
+    }
+
+    @Test
+    @DisplayName("createBooksBulk: rejects duplicate ISBNs inside the payload before saving")
+    void createBooksBulk_duplicatePayload() {
+        CreateBookRequest duplicate = new CreateBookRequest();
+        duplicate.setTitle("Duplicate");
+        duplicate.setAuthor("Another Author");
+        duplicate.setIsbnNo("032156840B");
+        duplicate.setFileSizeKb(1000);
+
+        BulkCreateBookRequest bulk = new BulkCreateBookRequest();
+        bulk.setBooks(List.of(ebookRequest, duplicate));
+
+        assertThrows(DuplicateIsbnException.class, () -> bookService.createBooksBulk(bulk));
+        verify(bookRepository, never()).saveAll(anyList());
     }
 
     // ── Read ─────────────────────────────────────────────────────────────────
@@ -114,7 +152,7 @@ class BookServiceTest {
     @DisplayName("getBookByIsbn: returns book when ISBN exists")
     void getBookByIsbn_found() {
         EBook book = new EBook("Clean Code", "Robert C. Martin", "032156840b", 3500);
-        when(bookRepository.findByIsbnNo("032156840b")).thenReturn(Optional.of(book));
+        when(bookRepository.findByIsbnNoIgnoreCase("032156840b")).thenReturn(Optional.of(book));
 
         BookResponse response = bookService.getBookByIsbn("032156840b");
         assertEquals("Clean Code", response.getTitle());

@@ -14,31 +14,18 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
-/**
- * REST API for the Pitso Book Management System.
- *
- * Base path: /api/v1/books
- *
- * Versioning strategy: URI prefix (/v1/) allows a future /v2/ to coexist.
- *
- * Endpoints:
- *  POST   /api/v1/books              → create any book type
- *  GET    /api/v1/books              → list all (paginated)
- *  GET    /api/v1/books/{id}         → get by ID
- *  GET    /api/v1/books/isbn/{isbn}  → get by ISBN
- *  GET    /api/v1/books/search       → search by title/author
- *  GET    /api/v1/books/ebooks       → list all EBooks
- *  GET    /api/v1/books/printbooks   → list all PrintBooks
- *  GET    /api/v1/books/stats        → inventory stats
- *  PATCH  /api/v1/books/{id}         → partial update
- *  DELETE /api/v1/books/{id}         → delete
- */
+/** REST API for book inventory management. */
 @RestController
 @RequestMapping("/api/v1/books")
 @Tag(name = "Books", description = "Book inventory management API")
 public class BookController {
+
+    private static final Set<String> ALLOWED_SORT_FIELDS = Set.of(
+        "id", "title", "author", "isbnNo", "createdAt", "updatedAt"
+    );
 
     private final BookService bookService;
 
@@ -49,18 +36,22 @@ public class BookController {
     // ── Create ───────────────────────────────────────────────────────────────
 
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
     @Operation(
         summary = "Create a book",
-        description = """
-            Creates an EBook or PrintBook determined by the ISBN prefix:
-            - ISBN starting with '0' → EBook (requires fileSizeKb)
-            - ISBN starting with '1' → PrintBook (requires noOfPages + weightGrams)
-            """
+        description = "Creates an EBook or PrintBook from the ISBN prefix."
     )
     public ResponseEntity<BookResponse> createBook(@Valid @RequestBody CreateBookRequest request) {
-        BookResponse response = bookService.createBook(request);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        return ResponseEntity.status(HttpStatus.CREATED).body(bookService.createBook(request));
+    }
+
+    @PostMapping("/bulk")
+    @Operation(
+        summary = "Create multiple books atomically",
+        description = "Creates up to 100 books in a single transaction. If one item fails validation, none are persisted."
+    )
+    public ResponseEntity<BulkCreateBookResponse> createBooksBulk(
+            @Valid @RequestBody BulkCreateBookRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(bookService.createBooksBulk(request));
     }
 
     // ── Read ─────────────────────────────────────────────────────────────────
@@ -69,15 +60,11 @@ public class BookController {
     @Operation(summary = "List all books (paginated)")
     public ResponseEntity<Page<BookResponse>> getAllBooks(
             @Parameter(description = "Page number (0-based)") @RequestParam(defaultValue = "0") int page,
-            @Parameter(description = "Page size") @RequestParam(defaultValue = "20") int size,
+            @Parameter(description = "Page size (1-100)") @RequestParam(defaultValue = "20") int size,
             @Parameter(description = "Sort field") @RequestParam(defaultValue = "title") String sortBy,
             @Parameter(description = "Sort direction: asc or desc") @RequestParam(defaultValue = "asc") String direction) {
 
-        Sort sort = direction.equalsIgnoreCase("desc")
-            ? Sort.by(sortBy).descending()
-            : Sort.by(sortBy).ascending();
-        Pageable pageable = PageRequest.of(page, Math.min(size, 100), sort);
-        return ResponseEntity.ok(bookService.getAllBooks(pageable));
+        return ResponseEntity.ok(bookService.getAllBooks(buildPageable(page, size, sortBy, direction)));
     }
 
     @GetMapping("/{id}")
@@ -99,20 +86,28 @@ public class BookController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
-        Pageable pageable = PageRequest.of(page, Math.min(size, 100), Sort.by("title"));
+        if (q == null || q.isBlank()) {
+            throw new IllegalArgumentException("Search query q must not be blank");
+        }
+
+        Pageable pageable = buildPageable(page, size, "title", "asc");
         return ResponseEntity.ok(bookService.searchBooks(q, pageable));
     }
 
     @GetMapping("/ebooks")
-    @Operation(summary = "List all EBooks")
-    public ResponseEntity<List<BookResponse>> getAllEBooks() {
-        return ResponseEntity.ok(bookService.getAllEBooks());
+    @Operation(summary = "List EBooks (paginated)")
+    public ResponseEntity<Page<BookResponse>> getAllEBooks(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(bookService.getAllEBooks(buildPageable(page, size, "title", "asc")));
     }
 
     @GetMapping("/printbooks")
-    @Operation(summary = "List all PrintBooks with weight details")
-    public ResponseEntity<List<BookResponse>> getAllPrintBooks() {
-        return ResponseEntity.ok(bookService.getAllPrintBooks());
+    @Operation(summary = "List PrintBooks (paginated)")
+    public ResponseEntity<Page<BookResponse>> getAllPrintBooks(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(bookService.getAllPrintBooks(buildPageable(page, size, "title", "asc")));
     }
 
     @GetMapping("/stats")
@@ -124,7 +119,7 @@ public class BookController {
     // ── Update ───────────────────────────────────────────────────────────────
 
     @PatchMapping("/{id}")
-    @Operation(summary = "Partially update a book (title, author, type-specific fields)")
+    @Operation(summary = "Partially update a book")
     public ResponseEntity<BookResponse> updateBook(
             @PathVariable Long id,
             @Valid @RequestBody UpdateBookRequest request) {
@@ -134,10 +129,33 @@ public class BookController {
     // ── Delete ───────────────────────────────────────────────────────────────
 
     @DeleteMapping("/{id}")
-    @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Delete a book by ID")
     public ResponseEntity<Void> deleteBook(@PathVariable Long id) {
         bookService.deleteBook(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private Pageable buildPageable(int page, int size, String sortBy, String direction) {
+        if (page < 0) {
+            throw new IllegalArgumentException("page must be 0 or greater");
+        }
+        if (size < 1 || size > 100) {
+            throw new IllegalArgumentException("size must be between 1 and 100");
+        }
+        if (!ALLOWED_SORT_FIELDS.contains(sortBy)) {
+            throw new IllegalArgumentException(
+                "sortBy must be one of: " + String.join(", ", ALLOWED_SORT_FIELDS));
+        }
+
+        String normalizedDirection = direction.toLowerCase(Locale.ROOT);
+        if (!normalizedDirection.equals("asc") && !normalizedDirection.equals("desc")) {
+            throw new IllegalArgumentException("direction must be asc or desc");
+        }
+
+        Sort sort = normalizedDirection.equals("desc")
+            ? Sort.by(sortBy).descending()
+            : Sort.by(sortBy).ascending();
+
+        return PageRequest.of(page, size, sort);
     }
 }
