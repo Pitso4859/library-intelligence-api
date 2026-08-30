@@ -1,41 +1,39 @@
-# =============================================
 # Vercel Container - Library Intelligence API
-# Java 17 + Spring Boot
-# =============================================
+# Java 17 + Spring Boot 3
+# Uses Ubuntu Jammy and an absolute Java path for Vercel's container wrapper.
 
 # ---------- Build stage ----------
-FROM eclipse-temurin:17-jdk-alpine AS builder
+FROM maven:3.9.11-eclipse-temurin-17 AS builder
 WORKDIR /app
-
-RUN apk add --no-cache maven
 
 COPY pom.xml ./
-RUN mvn dependency:go-offline -q
+RUN mvn -B -q dependency:go-offline
 
 COPY src ./src
-RUN mvn clean package -DskipTests -q
+RUN mvn -B -q clean package -DskipTests
 
 # ---------- Runtime stage ----------
-FROM eclipse-temurin:17-jre-alpine AS runtime
+FROM eclipse-temurin:17-jre-jammy AS runtime
 WORKDIR /app
 
-RUN addgroup -S pitso && adduser -S pitso -G pitso
+# Run the application as a non-root user.
+RUN groupadd --system pitso \
+    && useradd --system --gid pitso --home-dir /app --shell /usr/sbin/nologin pitso
 
-COPY --from=builder --chown=pitso:pitso /app/target/pitso-book-system-*.jar /app/app.jar
-COPY --chown=pitso:pitso start-vercel.sh /app/start-vercel.sh
+COPY --from=builder --chown=pitso:pitso \
+    /app/target/pitso-book-system-*.jar /app/app.jar
 
-RUN chmod +x /app/start-vercel.sh
-
-USER pitso
-
-# Make the Temurin Java runtime explicit for Vercel's container wrapper.
+# Vercel injects a certificate wrapper before the command.  Use an absolute
+# Java path and explicit Java library locations so the wrapper cannot lose
+# the Temurin runtime through PATH/environment changes.
 ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH=/opt/java/openjdk/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 ENV LD_LIBRARY_PATH=/opt/java/openjdk/lib/server:/opt/java/openjdk/lib
 
-# Vercel forwards HTTP traffic to the port in $PORT.
-# This is only a safe image default; the runtime value can override it.
+# Vercel forwards traffic to $PORT. The Spring configuration reads this value.
 ENV PORT=8080
 EXPOSE 8080
 
-CMD ["/app/start-vercel.sh"]
+USER pitso
+
+CMD ["/opt/java/openjdk/bin/java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=70.0", "-Djava.security.egd=file:/dev/./urandom", "-Dserver.address=0.0.0.0", "-jar", "/app/app.jar"]
