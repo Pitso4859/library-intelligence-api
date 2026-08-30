@@ -14,3 +14,9 @@
 - Prevented development seed data from contaminating integration tests.
 - Expanded automated test coverage to 39 tests.
 - Removed unused Lombok dependency and repository build artifacts.
+
+## Vercel runtime port binding fix
+- Added `start-vercel.sh` to bind Spring Boot explicitly to `0.0.0.0:$PORT`.
+- Added explicit Temurin Java runtime environment paths.
+- Removed production database localhost/default-credential fallbacks.
+- Added Flyway connection retries for container cold starts.
