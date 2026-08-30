@@ -1,0 +1,12 @@
+.git
+.github
+.idea
+.vscode
+target
+*.iml
+*.log
+.env
+.env.*
+!.env.vercel.example
+.DS_Store
+Thumbs.db

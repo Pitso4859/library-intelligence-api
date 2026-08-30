@@ -1,0 +1,35 @@
+# =============================================
+# Vercel Container - Pitso Book System
+# Java 17 + Spring Boot
+# =============================================
+
+# Build stage
+FROM eclipse-temurin:17-jdk-alpine AS builder
+WORKDIR /app
+
+RUN apk add --no-cache maven
+
+# Cache Maven dependencies before copying application sources
+COPY pom.xml ./
+RUN mvn dependency:go-offline -q
+
+COPY src ./src
+RUN mvn clean package -DskipTests -q
+
+# Runtime stage
+FROM eclipse-temurin:17-jre-alpine AS runtime
+WORKDIR /app
+
+RUN addgroup -S pitso && adduser -S pitso -G pitso
+
+COPY --from=builder --chown=pitso:pitso /app/target/pitso-book-system-*.jar /app/app.jar
+
+USER pitso
+
+# Vercel project settings should define PORT=8080.
+ENV PORT=8080
+EXPOSE 8080
+
+# Use the absolute Temurin Java path for compatibility with the Vercel
+# container runtime wrapper.
+CMD ["/opt/java/openjdk/bin/java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=70.0", "-Djava.security.egd=file:/dev/./urandom", "-jar", "/app/app.jar"]
