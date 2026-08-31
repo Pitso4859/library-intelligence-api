@@ -83,3 +83,7 @@ mvn spring-boot:run
 ```
 
 The application defaults to port 8080 locally.
+
+## Cold-start optimization
+
+This build defers JPA/database initialization so Vercel can receive an HTTP connection inside its container startup window. See `VERCEL_COLD_START_FIX.md`.
