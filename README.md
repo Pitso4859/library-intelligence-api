@@ -326,3 +326,21 @@ GitHub: https://github.com/Pitso4859
 ---
 
 If you are reviewing this repository for a software engineering role, start with `BookService`, `CatalogIntelligenceService`, `BookRepository`, `RequestIdFilter`, and the integration tests. They contain the main engineering decisions in the project.
+
+
+## Web frontend
+
+The project now includes a server-rendered frontend built with **Spring Boot + Thymeleaf**.
+The UI uses the same Java services as the REST API, so book validation, CRUD behavior,
+and catalog intelligence remain in one business layer.
+
+After starting the application with `mvn spring-boot:run`, open:
+
+- `http://localhost:8080/` — frontend landing page
+- `http://localhost:8080/dashboard` — inventory dashboard
+- `http://localhost:8080/books` — book inventory and CRUD
+- `http://localhost:8080/catalog` — catalog insights and recommendations
+- `http://localhost:8080/api` — API status JSON
+- `http://localhost:8080/swagger-ui.html` — REST API documentation
+
+The frontend is responsive and requires no separate Node.js build.

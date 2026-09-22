@@ -9,21 +9,20 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Lightweight entry points that do not require a database connection.
- *
- * Opening the deployed Vercel URL now returns a small API status document
- * instead of falling through to Spring's static-resource handler.
+ * Lightweight API information endpoint that does not require a database connection.
+ * The web interface is served at "/" by LibraryWebController.
  */
 @RestController
 @Hidden
 public class HomeController {
 
-    @GetMapping({"/", "/api"})
+    @GetMapping("/api")
     public ResponseEntity<Map<String, Object>> apiInfo() {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Library Intelligence API");
         body.put("status", "UP");
         body.put("version", "1.1.0");
+        body.put("web", "/");
         body.put("documentation", "/swagger-ui.html");
         body.put("openApi", "/api-docs");
         body.put("health", "/actuator/health");

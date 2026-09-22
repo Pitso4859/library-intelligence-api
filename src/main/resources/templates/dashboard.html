@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Dashboard')}"></head>
+<body>
+<nav th:replace="~{fragments :: nav('dashboard')}"></nav>
+
+<main class="shell page">
+    <section class="hero compact-hero">
+        <div>
+            <p class="eyebrow">LIBRARY OPERATIONS</p>
+            <h1>Catalog overview</h1>
+            <p class="hero-copy">Manage books, review inventory health, and explore explainable recommendations from one Java application.</p>
+        </div>
+        <a class="button primary" th:href="@{/books/new}">Add book</a>
+    </section>
+
+    <section class="stats-grid" aria-label="Inventory statistics">
+        <article class="stat-card">
+            <span class="stat-label">Total books</span>
+            <strong th:text="${stats.totalBooks}">0</strong>
+            <span class="stat-help">Across all formats</span>
+        </article>
+        <article class="stat-card">
+            <span class="stat-label">EBooks</span>
+            <strong th:text="${stats.totalEBooks}">0</strong>
+            <span class="stat-help">Digital catalog</span>
+        </article>
+        <article class="stat-card">
+            <span class="stat-label">Print books</span>
+            <strong th:text="${stats.totalPrintBooks}">0</strong>
+            <span class="stat-help">Physical catalog</span>
+        </article>
+        <article class="stat-card">
+            <span class="stat-label">Authors</span>
+            <strong th:text="${insights.uniqueAuthors}">0</strong>
+            <span class="stat-help">Unique contributors</span>
+        </article>
+    </section>
+
+    <section class="content-grid two-column">
+        <article class="panel">
+            <div class="panel-heading">
+                <div>
+                    <p class="eyebrow">RECENT ACTIVITY</p>
+                    <h2>Newest books</h2>
+                </div>
+                <a class="text-link" th:href="@{/books}">View all</a>
+            </div>
+            <div class="list-stack" th:if="${!insights.newestBooks.isEmpty()}">
+                <a class="book-row" th:each="book : ${insights.newestBooks}" th:href="@{/books/{id}/edit(id=${book.id})}">
+                    <span class="type-badge" th:text="${book.bookType == 'EBOOK' ? 'EBook' : 'Print'}">EBook</span>
+                    <span class="book-copy">
+                        <strong th:text="${book.title}">Title</strong>
+                        <small th:text="${book.author + ' · ' + book.isbnNo}">Author · ISBN</small>
+                    </span>
+                    <span class="row-arrow">›</span>
+                </a>
+            </div>
+            <p class="empty-copy" th:if="${insights.newestBooks.isEmpty()}">No books have been added yet.</p>
+        </article>
+
+        <article class="panel">
+            <div class="panel-heading">
+                <div>
+                    <p class="eyebrow">CATALOG SIGNALS</p>
+                    <h2>Top authors</h2>
+                </div>
+                <a class="text-link" th:href="@{/catalog}">Insights</a>
+            </div>
+            <div class="author-list" th:if="${!insights.topAuthors.isEmpty()}">
+                <div class="author-row" th:each="author, iter : ${insights.topAuthors}">
+                    <span class="author-rank" th:text="${iter.index + 1}">1</span>
+                    <span th:text="${author.author}">Author</span>
+                    <strong th:text="${author.bookCount + (author.bookCount == 1 ? ' book' : ' books')}">2 books</strong>
+                </div>
+            </div>
+            <p class="empty-copy" th:if="${insights.topAuthors.isEmpty()}">Author insights will appear as your catalog grows.</p>
+        </article>
+    </section>
+
+    <section class="panel recommendations-panel">
+        <div class="panel-heading">
+            <div>
+                <p class="eyebrow">EXPLAINABLE RANKING</p>
+                <h2>Catalog recommendations</h2>
+            </div>
+            <a class="button secondary small" th:href="@{/catalog}">Explore catalog</a>
+        </div>
+        <div class="recommendation-grid">
+            <article class="recommendation-card" th:each="item : ${recommendations}">
+                <div class="recommendation-top">
+                    <span class="type-badge" th:text="${item.bookType == 'EBOOK' ? 'EBook' : 'Print'}">Print</span>
+                    <span class="score" th:text="${item.score + ' pts'}">15 pts</span>
+                </div>
+                <h3 th:text="${item.title}">Book title</h3>
+                <p th:text="${item.author}">Author</p>
+                <small th:text="${item.reasons.isEmpty() ? 'General catalog match' : item.reasons.get(0)}">Reason</small>
+            </article>
+        </div>
+    </section>
+</main>
+
+<footer th:replace="~{fragments :: footer}"></footer>
+</body>
+</html>

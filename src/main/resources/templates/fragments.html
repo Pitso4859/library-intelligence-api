@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="head(pageTitle)">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:text="${pageTitle + ' | Library Intelligence'}">Library Intelligence</title>
+    <meta name="description" content="Library Intelligence book inventory and catalog analytics application">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
+</head>
+<body>
+<nav class="topbar" th:fragment="nav(active)">
+    <div class="nav-shell">
+        <a class="brand" th:href="@{/}">
+            <span class="brand-mark">LI</span>
+            <span>Library Intelligence</span>
+        </a>
+        <div class="nav-links">
+            <a th:href="@{/dashboard}" th:classappend="${active == 'dashboard' ? 'active' : ''}">Dashboard</a>
+            <a th:href="@{/books}" th:classappend="${active == 'books' ? 'active' : ''}">Books</a>
+            <a th:href="@{/catalog}" th:classappend="${active == 'catalog' ? 'active' : ''}">Catalog Intelligence</a>
+            <a th:href="@{/swagger-ui.html}" target="_blank">API Docs</a>
+        </div>
+    </div>
+</nav>
+<footer class="footer" th:fragment="footer">
+    <div class="shell footer-inner">
+        <span>Library Intelligence</span>
+        <span>Spring Boot · Java · Thymeleaf</span>
+    </div>
+</footer>
+</body>
+</html>

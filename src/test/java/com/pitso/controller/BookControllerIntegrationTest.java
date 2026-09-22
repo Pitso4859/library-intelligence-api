@@ -35,9 +35,18 @@ class BookControllerIntegrationTest {
     private static final String BASE_URL = "/api/v1/books";
 
     @Test
-    @DisplayName("GET /: returns API status instead of 500")
-    void root_returnsApiStatus() throws Exception {
+    @DisplayName("GET /: renders the Library Intelligence dashboard")
+    void root_rendersDashboard() throws Exception {
         mockMvc.perform(get("/"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("home"))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Library Intelligence")));
+    }
+
+    @Test
+    @DisplayName("GET /api: returns API status")
+    void apiInfo_returnsApiStatus() throws Exception {
+        mockMvc.perform(get("/api"))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.name").value("Library Intelligence API"))
             .andExpect(jsonPath("$.status").value("UP"))

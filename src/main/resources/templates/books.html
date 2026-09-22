@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Books')}"></head>
+<body>
+<nav th:replace="~{fragments :: nav('books')}"></nav>
+
+<main class="shell page">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow">INVENTORY</p>
+            <h1>Books</h1>
+            <p>Search, update and maintain the library catalog.</p>
+        </div>
+        <a class="button primary" th:href="@{/books/new}">Add book</a>
+    </section>
+
+    <div class="flash success" th:if="${successMessage}" th:text="${successMessage}"></div>
+
+    <section class="panel">
+        <form class="search-bar" th:action="@{/books}" method="get">
+            <label class="sr-only" for="q">Search books</label>
+            <input id="q" name="q" type="search" th:value="${q}" placeholder="Search by title or author">
+            <button class="button secondary" type="submit">Search</button>
+            <a class="button ghost" th:if="${q != ''}" th:href="@{/books}">Clear</a>
+        </form>
+
+        <div class="table-wrap" th:if="${!books.isEmpty()}">
+            <table>
+                <thead>
+                <tr>
+                    <th>Title</th>
+                    <th>Author</th>
+                    <th>Type</th>
+                    <th>ISBN</th>
+                    <th>Details</th>
+                    <th class="align-right">Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="book : ${books.content}">
+                    <td data-label="Title"><strong th:text="${book.title}">Book title</strong></td>
+                    <td data-label="Author" th:text="${book.author}">Author</td>
+                    <td data-label="Type"><span class="type-badge" th:text="${book.bookType == 'EBOOK' ? 'EBook' : 'Print'}">Type</span></td>
+                    <td data-label="ISBN"><span class="mono" th:text="${book.isbnNo}">0000000000</span></td>
+                    <td data-label="Details" class="muted" th:text="${book.sizeDetails}">Details</td>
+                    <td data-label="Actions" class="actions align-right">
+                        <a class="button ghost small" th:href="@{/books/{id}/edit(id=${book.id})}">Edit</a>
+                        <form th:action="@{/books/{id}/delete(id=${book.id})}" method="post" class="inline-form">
+                            <button class="button danger small" type="submit">Delete</button>
+                        </form>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="empty-state" th:if="${books.isEmpty()}">
+            <h2>No books found</h2>
+            <p th:text="${q == '' ? 'Add the first book to start building your catalog.' : 'Try another title or author.'}">No results.</p>
+            <a class="button primary" th:href="@{/books/new}">Add book</a>
+        </div>
+
+        <div class="pagination" th:if="${books.totalPages > 1}">
+            <span>
+                <a class="button ghost small" th:if="${!books.first}" th:href="@{/books(page=${books.number - 1},q=${q})}">Previous</a>
+                <span class="button ghost small disabled" th:if="${books.first}">Previous</span>
+            </span>
+            <span th:text="${'Page ' + (books.number + 1) + ' of ' + books.totalPages}">Page 1 of 1</span>
+            <span>
+                <a class="button ghost small" th:if="${!books.last}" th:href="@{/books(page=${books.number + 1},q=${q})}">Next</a>
+                <span class="button ghost small disabled" th:if="${books.last}">Next</span>
+            </span>
+        </div>
+    </section>
+</main>
+
+<footer th:replace="~{fragments :: footer}"></footer>
+</body>
+</html>

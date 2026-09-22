@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head('Catalog Intelligence')}"></head>
+<body>
+<nav th:replace="~{fragments :: nav('catalog')}"></nav>
+
+<main class="shell page">
+    <section class="page-header">
+        <div>
+            <p class="eyebrow">JAVA CATALOG ENGINE</p>
+            <h1>Catalog intelligence</h1>
+            <p>Explore deterministic recommendations and operational catalog insights.</p>
+        </div>
+    </section>
+
+    <section class="stats-grid">
+        <article class="stat-card"><span class="stat-label">Books</span><strong th:text="${insights.totalBooks}">0</strong><span class="stat-help">Total inventory</span></article>
+        <article class="stat-card"><span class="stat-label">Authors</span><strong th:text="${insights.uniqueAuthors}">0</strong><span class="stat-help">Unique authors</span></article>
+        <article class="stat-card"><span class="stat-label">Avg. EBook size</span><strong th:text="${insights.averageEBookSizeKb + ' KB'}">0 KB</strong><span class="stat-help">Digital format</span></article>
+        <article class="stat-card"><span class="stat-label">Avg. print pages</span><strong th:text="${insights.averagePrintPages}">0</strong><span class="stat-help">Physical format</span></article>
+    </section>
+
+    <section class="panel">
+        <div class="panel-heading catalog-heading">
+            <div>
+                <p class="eyebrow">RECOMMENDATIONS</p>
+                <h2>Find a strong catalog match</h2>
+            </div>
+        </div>
+        <form class="catalog-filter" th:action="@{/catalog}" method="get">
+            <div class="field grow">
+                <label for="catalogQuery">Title or author</label>
+                <input id="catalogQuery" name="q" type="search" th:value="${q}" placeholder="Search the catalog">
+            </div>
+            <div class="field select-field">
+                <label for="preferredType">Preferred format</label>
+                <select id="preferredType" name="preferredType">
+                    <option value="ANY" th:selected="${preferredType == 'ANY'}">Any format</option>
+                    <option value="EBOOK" th:selected="${preferredType == 'EBOOK'}">EBook</option>
+                    <option value="PRINTBOOK" th:selected="${preferredType == 'PRINTBOOK'}">Print Book</option>
+                </select>
+            </div>
+            <button class="button primary filter-button" type="submit">Recommend</button>
+        </form>
+
+        <div class="recommendation-grid detailed" th:if="${!recommendations.isEmpty()}">
+            <article class="recommendation-card" th:each="item : ${recommendations}">
+                <div class="recommendation-top">
+                    <span class="type-badge" th:text="${item.bookType == 'EBOOK' ? 'EBook' : 'Print'}">Type</span>
+                    <span class="score" th:text="${item.score + ' pts'}">0 pts</span>
+                </div>
+                <h3 th:text="${item.title}">Title</h3>
+                <p th:text="${item.author}">Author</p>
+                <span class="mono subtle" th:text="${item.isbnNo}">ISBN</span>
+                <ul class="reason-list">
+                    <li th:each="reason : ${item.reasons}" th:text="${reason}">Reason</li>
+                </ul>
+            </article>
+        </div>
+        <div class="empty-state compact" th:if="${recommendations.isEmpty()}">
+            <h2>No recommendations found</h2>
+            <p>Try a broader title or author search, or choose Any format.</p>
+        </div>
+    </section>
+
+    <section class="content-grid two-column">
+        <article class="panel">
+            <div class="panel-heading"><div><p class="eyebrow">AUTHOR DISTRIBUTION</p><h2>Top authors</h2></div></div>
+            <div class="author-list">
+                <div class="author-row" th:each="author, iter : ${insights.topAuthors}">
+                    <span class="author-rank" th:text="${iter.index + 1}">1</span>
+                    <span th:text="${author.author}">Author</span>
+                    <strong th:text="${author.bookCount}">0</strong>
+                </div>
+            </div>
+        </article>
+        <article class="panel">
+            <div class="panel-heading"><div><p class="eyebrow">FORMAT METRICS</p><h2>Catalog averages</h2></div></div>
+            <dl class="metric-list">
+                <div><dt>EBooks</dt><dd th:text="${insights.totalEBooks}">0</dd></div>
+                <div><dt>Print books</dt><dd th:text="${insights.totalPrintBooks}">0</dd></div>
+                <div><dt>Average print weight</dt><dd th:text="${insights.averagePrintWeightGrams + ' g'}">0 g</dd></div>
+                <div><dt>Average print pages</dt><dd th:text="${insights.averagePrintPages}">0</dd></div>
+            </dl>
+        </article>
+    </section>
+</main>
+
+<footer th:replace="~{fragments :: footer}"></footer>
+</body>
+</html>

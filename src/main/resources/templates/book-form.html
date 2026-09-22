@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head(${mode == 'create' ? 'Add Book' : 'Edit Book'})}"></head>
+<body>
+<nav th:replace="~{fragments :: nav('books')}"></nav>
+
+<main class="shell page narrow-page">
+    <div class="back-row"><a class="text-link" th:href="@{/books}">← Back to books</a></div>
+
+    <section class="page-header form-header">
+        <div>
+            <p class="eyebrow" th:text="${mode == 'create' ? 'NEW INVENTORY ITEM' : 'EDIT INVENTORY ITEM'}">BOOK</p>
+            <h1 th:text="${mode == 'create' ? 'Add a book' : 'Edit book'}">Add a book</h1>
+            <p th:if="${mode == 'create'}">ISBN prefix 0 creates an EBook. Prefix 1 creates a Print Book.</p>
+            <p th:if="${mode == 'edit'}" th:text="${book.bookType + ' · ISBN ' + book.isbnNo}">Type · ISBN</p>
+        </div>
+    </section>
+
+    <section class="panel form-panel">
+        <form th:if="${mode == 'create'}" th:action="@{/books}" th:object="${bookForm}" method="post">
+            <div class="form-errors" th:if="${#fields.hasAnyErrors()}">
+                <strong>Please correct the form.</strong>
+                <ul><li th:each="err : ${#fields.allErrors()}" th:text="${err}">Error</li></ul>
+            </div>
+
+            <div class="form-grid">
+                <div class="field full">
+                    <label for="title">Title</label>
+                    <input id="title" type="text" th:field="*{title}" maxlength="255" placeholder="e.g. Clean Code" required>
+                    <small class="field-error" th:if="${#fields.hasErrors('title')}" th:errors="*{title}"></small>
+                </div>
+                <div class="field full">
+                    <label for="author">Author</label>
+                    <input id="author" type="text" th:field="*{author}" maxlength="255" placeholder="e.g. Robert C. Martin" required>
+                    <small class="field-error" th:if="${#fields.hasErrors('author')}" th:errors="*{author}"></small>
+                </div>
+                <div class="field full">
+                    <label for="isbnNo">ISBN</label>
+                    <input id="isbnNo" type="text" th:field="*{isbnNo}" minlength="10" maxlength="10" placeholder="10 characters" required>
+                    <small>Start with 0 for EBook or 1 for Print Book.</small>
+                    <small class="field-error" th:if="${#fields.hasErrors('isbnNo')}" th:errors="*{isbnNo}"></small>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div>
+                    <h2>EBook details</h2>
+                    <p>Fill this when the ISBN starts with 0.</p>
+                </div>
+                <div class="field">
+                    <label for="fileSizeKb">File size (KB)</label>
+                    <input id="fileSizeKb" type="number" th:field="*{fileSizeKb}" min="1" placeholder="e.g. 3500">
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div>
+                    <h2>Print Book details</h2>
+                    <p>Fill these when the ISBN starts with 1.</p>
+                </div>
+                <div class="form-grid two">
+                    <div class="field">
+                        <label for="noOfPages">Number of pages</label>
+                        <input id="noOfPages" type="number" th:field="*{noOfPages}" min="1" placeholder="e.g. 320">
+                    </div>
+                    <div class="field">
+                        <label for="weightGrams">Weight (grams)</label>
+                        <input id="weightGrams" type="number" th:field="*{weightGrams}" min="0.1" step="0.1" placeholder="e.g. 450.0">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <a class="button ghost" th:href="@{/books}">Cancel</a>
+                <button class="button primary" type="submit">Add book</button>
+            </div>
+        </form>
+
+        <form th:if="${mode == 'edit'}" th:action="@{/books/{id}(id=${book.id})}" th:object="${bookForm}" method="post">
+            <div class="form-errors" th:if="${#fields.hasAnyErrors()}">
+                <strong>Please correct the form.</strong>
+                <ul><li th:each="err : ${#fields.allErrors()}" th:text="${err}">Error</li></ul>
+            </div>
+
+            <div class="form-grid">
+                <div class="field full">
+                    <label for="editTitle">Title</label>
+                    <input id="editTitle" type="text" th:field="*{title}" maxlength="255" required>
+                    <small class="field-error" th:if="${#fields.hasErrors('title')}" th:errors="*{title}"></small>
+                </div>
+                <div class="field full">
+                    <label for="editAuthor">Author</label>
+                    <input id="editAuthor" type="text" th:field="*{author}" maxlength="255" required>
+                    <small class="field-error" th:if="${#fields.hasErrors('author')}" th:errors="*{author}"></small>
+                </div>
+            </div>
+
+            <div class="form-section" th:if="${book.bookType == 'EBOOK'}">
+                <div>
+                    <h2>EBook details</h2>
+                    <p>Update the digital file size.</p>
+                </div>
+                <div class="field">
+                    <label for="editFileSizeKb">File size (KB)</label>
+                    <input id="editFileSizeKb" type="number" th:field="*{fileSizeKb}" min="1" required>
+                </div>
+            </div>
+
+            <div class="form-section" th:if="${book.bookType == 'PRINTBOOK'}">
+                <div>
+                    <h2>Print Book details</h2>
+                    <p>Update physical format information.</p>
+                </div>
+                <div class="form-grid two">
+                    <div class="field">
+                        <label for="editNoOfPages">Number of pages</label>
+                        <input id="editNoOfPages" type="number" th:field="*{noOfPages}" min="1" required>
+                    </div>
+                    <div class="field">
+                        <label for="editWeightGrams">Weight (grams)</label>
+                        <input id="editWeightGrams" type="number" th:field="*{weightGrams}" min="0.1" step="0.1" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <a class="button ghost" th:href="@{/books}">Cancel</a>
+                <button class="button primary" type="submit">Save changes</button>
+            </div>
+        </form>
+    </section>
+</main>
+
+<footer th:replace="~{fragments :: footer}"></footer>
+</body>
+</html>
