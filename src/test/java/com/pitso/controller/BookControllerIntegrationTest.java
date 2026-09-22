@@ -34,6 +34,25 @@ class BookControllerIntegrationTest {
 
     private static final String BASE_URL = "/api/v1/books";
 
+    @Test
+    @DisplayName("GET /: returns API status instead of 500")
+    void root_returnsApiStatus() throws Exception {
+        mockMvc.perform(get("/"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.name").value("Library Intelligence API"))
+            .andExpect(jsonPath("$.status").value("UP"))
+            .andExpect(jsonPath("$.documentation").value("/swagger-ui.html"));
+    }
+
+    @Test
+    @DisplayName("Unknown route: returns 404 instead of being converted to 500")
+    void unknownRoute_returns404() throws Exception {
+        mockMvc.perform(get("/this-route-does-not-exist"))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.status").value(404))
+            .andExpect(jsonPath("$.message").value("Resource not found"));
+    }
+
     // ── POST /api/v1/books ───────────────────────────────────────────────────
 
     @Test
