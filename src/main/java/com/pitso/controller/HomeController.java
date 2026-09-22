@@ -9,20 +9,19 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Lightweight API information endpoint that does not require a database connection.
- * The web interface is served at "/" by LibraryWebController.
+ * Lightweight API information endpoints that do not require a database connection.
+ * The Java Swing desktop client is the UI; this Spring Boot application remains a REST API.
  */
 @RestController
 @Hidden
 public class HomeController {
 
-    @GetMapping("/api")
+    @GetMapping({"/", "/api"})
     public ResponseEntity<Map<String, Object>> apiInfo() {
         Map<String, Object> body = new LinkedHashMap<>();
         body.put("name", "Library Intelligence API");
         body.put("status", "UP");
         body.put("version", "1.1.0");
-        body.put("web", "/");
         body.put("documentation", "/swagger-ui.html");
         body.put("openApi", "/api-docs");
         body.put("health", "/actuator/health");
